@@ -155,4 +155,5 @@ LLM のコーディングミスを減らすための行動指針。
 - **完了報告は証拠ベースで**: 「完了/直した/テストが通る/動く」と主張する前に、検証コマンドを実行し出力を確認する。推測で成功を主張せず、未検証なら「未検証」と明示する。詳細は `~/.claude/rules/verification-before-completion.md`
 - **PR は自己レビューで指摘ゼロまで**: PR を作成したらマージ前に必ず自分で diff を通しレビューし、指摘ゼロになるまで「レビュー→修正→再レビュー」を反復する。レビュー手段は `/review`・`/code-review`・`/codex` 等を活用してよい。詳細は `~/.claude/rules/self-review-before-merge.md`
 - **E2E テストは必ず実行しグリーンにする**: 変更を完了と見なす前・マージ前に、影響範囲の E2E を実行し全通過を確認する。通すためにテストを骨抜きにしない。E2E が無い/該当しない変更は最上位テスト（統合→ユニット）で代替しその旨を明示。詳細は `~/.claude/rules/e2e-must-pass.md`
+- **コミット衛生**: 1コミット=1論理変更（atomic）。conventional commits 形式（`feat:`/`fix:`/`chore:` 等）で、body に why を書く。無関係な変更・整形を同一コミットに混ぜない。squash 前提の雑な WIP を積まない。詳細は `~/.claude/rules/commit-hygiene.md`
 
