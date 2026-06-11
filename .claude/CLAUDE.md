@@ -153,4 +153,5 @@ LLM のコーディングミスを減らすための行動指針。
 
 - **本番コードへのテスト用コード混入禁止**: テスト都合で本番コードの構造を歪めない。環境分岐（mock vs 実装）を本番経路に埋め込まず、依存を interface 抽象化して DI で差し替える。同一機能の二重実装を避ける。詳細は `~/.claude/rules/no-test-code-in-production.md`（言語固有の具体例は各リポジトリの `.claude/rules/` を参照）
 - **完了報告は証拠ベースで**: 「完了/直した/テストが通る/動く」と主張する前に、検証コマンドを実行し出力を確認する。推測で成功を主張せず、未検証なら「未検証」と明示する。詳細は `~/.claude/rules/verification-before-completion.md`
+- **PR は自己レビューで指摘ゼロまで**: PR を作成したらマージ前に必ず自分で diff を通しレビューし、指摘ゼロになるまで「レビュー→修正→再レビュー」を反復する。レビュー手段は `/review`・`/code-review`・`/codex` 等を活用してよい。詳細は `~/.claude/rules/self-review-before-merge.md`
 
