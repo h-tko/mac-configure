@@ -169,5 +169,6 @@ LLM のコーディングミスを減らすための行動指針。
 - **完了報告は証拠ベースで**: 「完了/直した/テストが通る/動く」と主張する前に、検証コマンドを実行し出力を確認する。推測で成功を主張せず、未検証なら「未検証」と明示する。詳細は `~/.claude/rules/verification-before-completion.md`
 - **PR は自己レビューを収束させる**: PR 作成後、マージ前に必ず自分で diff を通しレビューする。**先にラウンド上限（1/2/3）を決め**、指摘を Blocker / Should / Nit に分類し、**Blocker・Should が枯れたら完了**（Nit でループを伸ばさない）。上限到達時は残指摘を提示してユーザーの判断を仰ぐ。**フルテスト / E2E は最終ゲートで 1 回**。詳細は `~/.claude/rules/self-review-before-merge.md`
 - **E2E テストは必ず実行しグリーンにする**: 変更を完了と見なす前・マージ前に、影響範囲の E2E を実行し全通過を確認する。通すためにテストを骨抜きにしない。E2E が無い/該当しない変更は最上位テスト（統合→ユニット）で代替しその旨を明示。詳細は `~/.claude/rules/e2e-must-pass.md`
+- **worktree は PR 作成後に削除する**: issue ごとに作った git worktree は、PR を作成した時点で削除する（`git worktree remove` → `git worktree prune`）。各ツリーに `node_modules` / ビルド成果物が個別に生成されるため放置すると数十 GB 規模で膨らむ。未コミットのソース変更がある場合は強制削除せず確認する。ブランチは消さない。詳細は `~/.claude/rules/worktree-cleanup.md`
 - **コミット衛生**: 1コミット=1論理変更（atomic）。conventional commits 形式（`feat:`/`fix:`/`chore:` 等）で、body に why を書く。無関係な変更・整形を同一コミットに混ぜない。squash 前提の雑な WIP を積まない。詳細は `~/.claude/rules/commit-hygiene.md`
 

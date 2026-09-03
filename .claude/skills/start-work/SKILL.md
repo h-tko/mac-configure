@@ -1,6 +1,6 @@
 ---
 name: start-work
-description: 標準開発フローを毎回同じ順序で固定実行するコマンド。ユーザーが「/start-work」と入力した時、またはコード変更タスク（issue 対応・機能追加・バグ修正）の開始時に使用。ブランチ → 計画 → 設計 → テスト → 実装 → テスト実行 → E2E → PR → 自己レビュー(ラウンド上限つき) の順に進める。進行中の作業記憶は `.es-flow/`（ローカル・git 管理外）に貯める。各フェーズはグローバル rules（tdd / verification-before-completion / e2e-must-pass / self-review-before-merge / no-test-code-in-production）とプロジェクトの CLAUDE.md に従う。
+description: 標準開発フローを毎回同じ順序で固定実行するコマンド。ユーザーが「/start-work」と入力した時、またはコード変更タスク（issue 対応・機能追加・バグ修正）の開始時に使用。ブランチ → 計画 → 設計 → テスト → 実装 → テスト実行 → E2E → PR → 自己レビュー(ラウンド上限つき) → 後片付け(worktree 削除) の順に進める。進行中の作業記憶は `.es-flow/`（ローカル・git 管理外）に貯める。各フェーズはグローバル rules（tdd / verification-before-completion / e2e-must-pass / self-review-before-merge / no-test-code-in-production）とプロジェクトの CLAUDE.md に従う。
 ---
 
 # /start-work — 標準開発フロー（固定）
@@ -189,6 +189,15 @@ diff の規模と性質から**開始前に**上限を決め、`.es-flow/review-
 - 各ラウンドの詳細は `.es-flow/review-log.md`
 - **最終結果サマリ**（ラウンド数 / 指摘内訳 / 見送った Nit とその理由 / follow-up issue 番号）を Phase 1 の issue のコメントに残す
 
+## Phase 10 — 後片付け（worktree 削除）🧹
+
+`~/.claude/rules/worktree-cleanup.md` に従う。
+
+- この作業のために **git worktree を作っていた場合、PR を作成し自己レビューまで終えた時点で削除する**（`git worktree remove <path>` → `git worktree prune`）
+- worktree を消しても**ブランチと PR は残る**。**ブランチは削除しない**
+- `git worktree remove` が失敗したら中身を確認する。生成物・ログのみなら `--force` で削除してよいが、**ソースの未コミット変更がある場合は削除せずユーザーに確認する**
+- worktree を使っていない場合はこのフェーズをスキップしてよい（スキップした旨の報告は不要）
+
 ## 完了報告（最終メッセージの必須要素）
 
 フロー完了（または中断）時のユーザーへの最終報告には、**このフローで作成した PR の URL 一覧を必ずまとめて記載する**。
@@ -212,6 +221,7 @@ diff の規模と性質から**開始前に**上限を決め、`.es-flow/review-
 - 依頼にトレースできない無関係な変更を混ぜる（外科的変更）
 - `.es-flow/` を外部リポジトリ / サービスへアップロードする（ローカル専用）
 - `.es-flow/` をプロジェクトのフィーチャーブランチにコミットする（git 管理外に保つ）
+- PR 作成後の worktree を放置する / 中身を確認せず `--force` で消す / ついでにブランチを消す
 
 ## 全体チェックリスト（起動時に TodoWrite へ展開）
 
@@ -224,4 +234,5 @@ diff の規模と性質から**開始前に**上限を決め、`.es-flow/review-
 - [ ] Phase 7: E2E グリーン（or 縮退を明示）→ スクショ/ログを `.es-flow/e2e/` へ → 結果サマリを issue コメントへ
 - [ ] Phase 8: PR 作成 + 本文（Summary/変更/Test plan）+ **複数レイヤー変更なら変更の性質に応じた図を最低1つ（sequence/ER/state/flowchart/差分表 から選択）** + Phase 7 のスクリーンショットを添付
 - [ ] Phase 9: 自己レビュー（**先にラウンド上限を決める: 1 / 2 / 3**）→ 指摘を Blocker / Should / Nit に分類 → Blocker・Should が枯れるまで（or 上限到達で判断を仰いで）ループ → **最終ゲートでフルテスト + E2E を 1 回**（詳細を `.es-flow/review-log.md`、最終サマリを issue コメントへ）
+- [ ] Phase 10: worktree を使っていたなら削除（`git worktree remove` → `prune`。ブランチは残す。未コミットのソース変更があれば確認）
 - [ ] 完了報告: 作成した PR の URL 一覧（複数リポジトリならマージ順序・依存も）を最終メッセージにまとめる
