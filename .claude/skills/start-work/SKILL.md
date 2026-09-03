@@ -1,6 +1,6 @@
 ---
 name: start-work
-description: 標準開発フローを毎回同じ順序で固定実行するコマンド。ユーザーが「/start-work」と入力した時、またはコード変更タスク（issue 対応・機能追加・バグ修正）の開始時に使用。ブランチ → 計画 → 設計 → テスト → 実装 → テスト実行 → E2E → PR → 自己レビュー の順に進める。各フェーズはグローバル rules（tdd / verification-before-completion / e2e-must-pass / self-review-before-merge / no-test-code-in-production）とプロジェクトの CLAUDE.md に従う。
+description: 標準開発フローを毎回同じ順序で固定実行するコマンド。ユーザーが「/start-work」と入力した時、またはコード変更タスク（issue 対応・機能追加・バグ修正）の開始時に使用。ブランチ → 計画 → 設計 → テスト → 実装 → テスト実行 → E2E → PR → 自己レビュー → 退避(アーカイブ) の順に進める。進行中の作業記憶は `.es-flow/` に貯め、最後に es-work-log へ 1 回だけ退避する。各フェーズはグローバル rules（tdd / verification-before-completion / e2e-must-pass / self-review-before-merge / no-test-code-in-production）とプロジェクトの CLAUDE.md に従う。
 ---
 
 # /start-work — 標準開発フロー（固定）
@@ -11,12 +11,36 @@ description: 標準開発フローを毎回同じ順序で固定実行するコ�
 
 ---
 
+## 作業記憶（`.es-flow/` スクラッチパッド）と退避
+
+進行中の作業記憶は作業ツリー直下の `.es-flow/`（scratchpad、**git 管理外**＝プロジェクトの `.gitignore` に追加し、フィーチャーブランチにコミットしない）に置く。
+
+- `.es-flow/notes.md` — 調査メモ
+- `.es-flow/review-log.md` — 自己レビュー各ラウンドの詳細ログ
+- `.es-flow/plan.md` — （必要時のみ）issue 起票に失敗した場合の計画フォールバック
+- `.es-flow/logs/` — テスト・lint・typecheck・build の出力
+- `.es-flow/e2e/` — E2E 実行ログ・スクリーンショット
+- `.es-flow/README.md` — 作業概要（退避先では `es-flow/README.md` になる）
+
+**ルール:**
+
+1. **Phase 10 までは `.es-flow/` を一切アップロード（退避）しない**。テストログ・E2E ログ・スクショ・`README.md` を含め、すべて `.es-flow/` 直下にローカルで貯める。後から見返したい出力（テスト結果・スクショ等）はここに残す（Phase 10 でまるごと退避される）。
+2. **issue コメントに残すもの**: **レビューの最終結果サマリ・E2E の結果**は、Phase 1 で作成した **issue のコメント**に残す（各ラウンドの詳細は `.es-flow/` 内の log のみで可）。
+3. **退避は Phase 10 で 1 回だけ**行う（途中で小出しにアップロードしない）。退避先・命名は Phase 10 を参照。
+
+---
+
 ## Phase 1 — ブランチ 🚦（承認ゲート）
 
 1. **Issue 確認**: 対応する Issue が指定されているか確認する。**指定されていなければ、まず「Issue を作成するか」をユーザーに確認する**（プロジェクト規約が Issue 起票を求める場合は特に必須）。作成する場合はタイトル・本文（背景 / 受け入れ条件）を提案し、承認を得てから起票する。ユーザーが「不要」と明示した場合のみ Issue なしで進む
+   - **起票が 2 本以上になるかを先に判定する**（タイトルを提案する前に。判定基準: 変更が複数リポジトリに及ぶ／独立した作業単位が複数あり複数PRに分ける必要がある／同一の解決単位に別リポジトリの対応が必要）
+   - **2 本以上になる場合は単発issueを並べず、`issue-structure` スキルを起動**（プラグイン経由なら `es-workflows:issue-structure`）して親issue（必要ならトラッキングissue）と各リポジトリの作業issueを作り、sub-issue と「関連」（依存方向・ペア）で結ぶ。構造の提案はユーザー承認を得てから起票する
+   - 構造化後、**Phase 2 以降は「今回着手する作業issue 1 本」だけを対象に進める**。他リポジトリ分は別ブランチ・別PR（＝別の start-work サイクル）とし、依存がある場合はリリース順序（例: API → admin / app）を守る
+   - 1 本で済む場合は従来どおり単発で起票する（階層を作らない）
 2. **要件理解**: 対応する Issue / 要件を読む。受け入れ条件・影響範囲を把握。不明点・複数解釈は**推測せず質問する**
+   - ここで「実は複数リポジトリに及ぶ」と判明した場合は、Phase 2 に進む前に `issue-structure` の**後追い構造化**で上位階層を付ける
 3. **ベースブランチの最新化**: ブランチを切る前に、現在のブランチがリポジトリのベース（メイン）ブランチかを確認する。ここで言うメインブランチは `main` 固定ではなく、**リポジトリでメインブランチとして設定されているブランチ**（プロジェクト規約で定めたベースブランチ。例: `develop_v0.0.1`）を指す。**メインブランチでない場合は、そのブランチに切り替え → 最新を pull → そこから新ブランチを切る**。すでにメインブランチ上にいる場合も、ブランチを切る前に最新を pull する
-4. **ブランチ提案**: `feature/<概要>` または `fix/<概要>` を提案し、**ユーザーの許可を得てから**ブランチを切る（勝手に作らない）。base ブランチはプロジェクト規約に従う
+4. **ブランチ提案**: `<type>/<issue#>-<slug>`（例: `feature/223-past-workplaces` / `fix/118-login-redirect`）を提案し、**ユーザーの許可を得てから**ブランチを切る（勝手に作らない）。**ブランチ名に issue 番号を含める**ことで Phase 10 の archive が退避先を自動でキーできる（含められない場合は Phase 10 で `--issue NNN` を明示）。base ブランチはプロジェクト規約に従う
 
 ## Phase 2 — 計画 🚦（承認ゲート）
 
@@ -28,6 +52,7 @@ description: 標準開発フローを毎回同じ順序で固定実行するコ�
 - 必要に応じて、該当パッケージの設計ドキュメント（`docs/` 等）を先に更新する（手順の原則: **仕様 → 設計 → コード**）
 - データフロー・インターフェース・データモデルへの影響を明示する
 - 大きめの変更はここで設計レビューを挟んでよい（`/plan-eng-review`・`/plan-design-review`）
+- **UI 変更が Figma の反映を含む場合は `~/.claude/skills/figma-import`（figma-import skill）に従う**。この設計フェーズで Phase A（spec 取得）・Phase B（Figma 値 → デザイントークンのマッピング表）まで済ませ、目分量でなく数値ベースで反映方針を固める
 
 ## Phase 4 — テスト（先に書く）
 
@@ -42,6 +67,7 @@ description: 標準開発フローを毎回同じ順序で固定実行するコ�
 1. **Green**: 仮実装で最速で通す
 2. **Refactor**: 通したまま整理する
 3. **本番コードにテスト用分岐を入れない**（`~/.claude/rules/no-test-code-in-production.md`）
+4. **Figma 反映を含む UI 実装は `figma-import` skill の Phase C〜E に従う**: 共通コンポーネント優先・トークン経由（HEX/px 直書き禁止）・Figma に無い要素を足さない・実機スクショを Figma と並べて差分検証する
 
 ## Phase 6 — テスト実行（証拠ベース）✅
 
@@ -50,6 +76,7 @@ description: 標準開発フローを毎回同じ順序で固定実行するコ�
 - ユニット / 統合テストを実行しグリーンを確認
 - lint / typecheck / build を実行
 - 結果（pass 件数等）を後の報告 / PR に**証拠として残す**
+- テスト・lint・typecheck・build の出力は `.es-flow/logs/` に保存する（Phase 10 で退避）
 
 ## Phase 7 — E2E ✅
 
@@ -58,11 +85,55 @@ description: 標準開発フローを毎回同じ順序で固定実行するコ�
 - 影響範囲の **E2E を実行しグリーン（全通過）**を確認
 - 通すためにテストを骨抜きにしない
 - E2E が無い / 該当しない場合は最上位テスト（統合 → ユニット）で代替し、**その旨を明示**
+- **結果をスクリーンショットとして取得する**: E2E（または代替で行ったブラウザ / 手動検証）の結果を**スクリーンショットで残す**。対象は「全通過のテストランナー出力」や「変更が反映された主要画面・操作後の状態（before/after があれば両方）」。**`.es-flow/e2e/` に保存**し（E2E 実行ログも同様）、**Phase 8 で PR に添付する**（添付方法は Phase 8 を参照）
+- 縮退（E2E 無し）の場合も、ブラウザ / 手動で確認した画面のスクリーンショットを `.es-flow/e2e/` に保存し、**何を確認したか**を添えて PR に添付する
+- **E2E の結果（pass 件数・確認内容のサマリ）を Phase 1 の issue のコメントに残す**（詳細ログ・スクショは `.es-flow/e2e/` のみで可）
 
 ## Phase 8 — PR
 
 1. **PR を作成**する（テストが書けた段階で Draft でもよい）。プロジェクト規約に Issue 紐付け（`Closes #NN`）があれば従う
 2. PR 本文に **Summary / 変更内容 / Test plan**（Phase 6・7 の結果）を記載
+3. **複数レイヤーにまたがってモジュールを追加・修正した場合、変更を可視化する図を PR 本文に含める**（必須・**最低 1 つ以上**）。
+
+   - 対象: handler → usecase → query/DB、あるいは複数パッケージ・複数エンドポイント・cross-repo にまたがる変更（単一関数内の修正や 1 レイヤーで完結する軽微な変更は不要）。
+   - **最優先の判断軸は「変更の性質に図種を合わせる」こと**。シーケンス図に固定しない。**前後の差分が一目で分かる**ことがゴール。すべて GitHub PR 本文でそのままレンダリングされる Mermaid / Markdown を使う。
+   - 図種の選択肢（**変更の性質に応じて必要なものを 1 つ以上**。複数組み合わせてよい）:
+     | 変更の性質 | 適した表現 |
+     |---|---|
+     | 呼び出し順・レイヤー間ホップ・新規/削除された経路 | Mermaid `sequenceDiagram`（participant にレイヤー/モジュール名。破壊的変更・cross-repo では追従が必要な外部=admin/app も participant に含め非互換経路を明示） |
+     | データの保持単位・テーブル関係・**基数 (cardinality)** の変化 | Mermaid `erDiagram`（Before/After を並記。どの属性がどこへ移り基数がどう変わったか） |
+     | 状態遷移の変化 | Mermaid `stateDiagram-v2` |
+     | モジュール依存・データフロー全体 | Mermaid `flowchart`（具体インスタンスで症状/解消を示すのにも有効） |
+     | API 契約・設定値などの増減 | **観点 × Before / After の差分表**（Markdown table） |
+   - 迷ったら「この変更で一番変わったのは “流れ” か “データの形” か “状態” か “契約” か」を自問し、それに対応する図を選ぶ。フロー以外が核心なのにシーケンス図だけ、は避ける。
+   - 参考: issue #329 の PR では ①ER 図(Before/After) ②具体インスタンス flowchart ③API 差分表 ④After のシーケンス図 を併用し、データ基数の変化（核心）を ER 図で端的に示した。
+
+4. **Phase 7 のスクリーンショット / 動画を PR に添付する**（必須）。Test plan セクション等に埋め込む。画像には**何を示すか**のキャプション（例: 「E2E 全通過」「<機能> 操作後の画面」）を必ず添える。
+
+   **添付方法は GitHub Releases のアセットを使う**（リポジトリを肥大化させず、動画も自動プレーヤー化できるため）。手順:
+
+   1. **アセットをアップロード**（専用の prerelease タグに置く。`gh` の `--repo OWNER/REPO` で対象リポジトリを明示）
+      ```bash
+      # 初回（タグ pr-assets を作成してアップロード）
+      gh release create pr-assets demo.mp4 screenshot.png --repo OWNER/REPO --prerelease --notes "PR assets"
+      # 既存タグに追加
+      gh release upload pr-assets newfile.png --repo OWNER/REPO
+      ```
+   2. **URL を取得**（固定形式）: `https://github.com/OWNER/REPO/releases/download/pr-assets/FILENAME`
+   3. **PR 本文に埋め込む**:
+      ```markdown
+      ![スクショ](https://github.com/OWNER/REPO/releases/download/pr-assets/screenshot.png)
+
+      https://github.com/OWNER/REPO/releases/download/pr-assets/demo.mp4   ← 動画は素の URL で自動プレーヤー化
+      ```
+   4. **PR に反映**: 新規は `gh pr create --body-file pr-body.md`、既存は `gh pr edit NN --body-file pr-body.md`
+
+   注意点:
+   - **公開範囲はリポジトリに一致**（public リポジトリだとアセットも誰でもアクセス可）。**機密ファイルは置かない**
+   - **ファイル名はスペース・特殊文字を避ける**（URL エンコードが必要になり面倒）
+   - **PR が参照中のアセットは消さない**（リリースを消すとリンク切れ）。専用タグ `pr-assets` のまま残す
+   - `--prerelease` を付ける（通常のリリース一覧に混ざらない）。上限は 1 ファイル 2GB
+   - これが使えない場合のみ、スクショのファイルパスと内容説明を本文に明記し PR コメントで添付する（フォールバック）
 
 ## Phase 9 — 自己レビュー 🔁（指摘ゼロまで）
 
@@ -71,8 +142,27 @@ description: 標準開発フローを毎回同じ順序で固定実行するコ�
 1. 自分の diff を**通しでレビュー**（観点: 仕様整合 / バグ / テストカバレッジ / セキュリティ / 不要変更の混入）
 2. レビュー手段は `/review`・`/code-review`・`/codex` を活用してよい
 3. 指摘を修正し検証（Phase 6・7 に戻る）→ 再レビュー。**新たな指摘が出なくなるまで反復**
+4. 各ラウンドの詳細は `.es-flow/review-log.md` に記録し、**最終結果サマリを Phase 1 の issue のコメントに残す**
+
+## Phase 10 — 退避（es-work-log へアーカイブ）📦
+
+`.es-flow/` の中身を **1 回だけ** es-work-log の **`<org>/<repo>/issue-NNN/es-flow/`** にまるごと退避する（`.es-flow/README.md` → `es-flow/README.md`）。
+
+- 退避先フォルダは **issue 番号でキーする**（ブランチ名ではない）
+- issue 番号は archive スクリプトがブランチ名 `<type>/<issue#>-<slug>` から自動抽出するか、`--issue NNN` で明示する
+- **issue が存在しない（Phase 1 で起票しなかった / 起票に失敗した）場合は退避先を issue でキーできない**。その場合は**理由を付けて報告し、退避をスキップする**（silent skip 禁止）
 
 ---
+
+## 完了報告（最終メッセージの必須要素）
+
+フロー完了（または中断）時のユーザーへの最終報告には、**このフローで作成した PR の URL 一覧を必ずまとめて記載する**。
+
+- 形式: `| リポジトリ | PR URL | 内容 |` の表（1件のみなら 1 行でも可）
+- **URL は生の完全な URL（`https://github.com/...`）をそのまま表示する**。`repo#番号` やリンクテキストに畳み込んだ markdown リンクだけにしない（ターミナルでコピー/クリックできる形にする）
+- 複数リポジトリにまたがる場合は **マージ順序・依存関係**（例: API → admin）を添える
+- 既存 PR に push した場合（PR 新規作成なし）もその PR の URL を記載する
+- PR を作成しなかった場合は「PR なし」とその理由を明記する
 
 ## 禁止
 
@@ -82,15 +172,20 @@ description: 標準開発フローを毎回同じ順序で固定実行するコ�
 - E2E / テストを骨抜きにして緑に見せる
 - 自己レビューをせずにマージ / レビュー依頼へ進む
 - 依頼にトレースできない無関係な変更を混ぜる（外科的変更）
+- `.es-flow/` を Phase 10 より前に退避（アップロード）する / 小出しにアップロードする
+- `.es-flow/` をプロジェクトのフィーチャーブランチにコミットする（git 管理外に保つ）
+- 退避を理由を告げずにスキップする（silent skip）
 
 ## 全体チェックリスト（起動時に TodoWrite へ展開）
 
-- [ ] Phase 1: Issue 確認（無ければ作成可否を確認）→ 要件理解・不明点質問 → ベースブランチへ切替＆最新化 → ブランチ承認
+- [ ] Phase 1: Issue 確認（無ければ作成可否を確認。**起票が2本以上になるなら `issue-structure` で構造化**）→ 要件理解・不明点質問 → ベースブランチへ切替＆最新化 → ブランチ承認（`<type>/<issue#>-<slug>`）
 - [ ] Phase 2: 実装計画の承認
 - [ ] Phase 3: 設計（docs 更新・影響範囲明示）
 - [ ] Phase 4: テストリスト → Red（失敗確認）
 - [ ] Phase 5: 実装（Green → Refactor）
-- [ ] Phase 6: ユニット/統合・lint/typecheck/build グリーン（証拠）
-- [ ] Phase 7: E2E グリーン（or 縮退を明示）
-- [ ] Phase 8: PR 作成 + 本文（Summary/変更/Test plan）
-- [ ] Phase 9: 自己レビュー → 指摘ゼロまでループ
+- [ ] Phase 6: ユニット/統合・lint/typecheck/build グリーン（証拠）→ 出力を `.es-flow/logs/` へ
+- [ ] Phase 7: E2E グリーン（or 縮退を明示）→ スクショ/ログを `.es-flow/e2e/` へ → 結果サマリを issue コメントへ
+- [ ] Phase 8: PR 作成 + 本文（Summary/変更/Test plan）+ **複数レイヤー変更なら変更の性質に応じた図を最低1つ（sequence/ER/state/flowchart/差分表 から選択）** + Phase 7 のスクリーンショットを添付
+- [ ] Phase 9: 自己レビュー → 指摘ゼロまでループ（詳細を `.es-flow/review-log.md`、最終サマリを issue コメントへ）
+- [ ] Phase 10: `.es-flow/` を es-work-log（`<org>/<repo>/issue-NNN/es-flow/`）へ 1 回だけ退避（issue 無しなら理由付きでスキップ報告）
+- [ ] 完了報告: 作成した PR の URL 一覧（複数リポジトリならマージ順序・依存も）を最終メッセージにまとめる
